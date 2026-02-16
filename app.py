@@ -33,34 +33,35 @@ if df.empty:
     st.warning("No data found in Google Sheet.")
     st.stop()
 
-# Clean column names
+# Clean column names (removes hidden spaces)
 df.columns = df.columns.str.strip()
 
 # -----------------------------------
-# 1️⃣ Customer Name Dropdown
+# 1️⃣ Party Name Dropdown
 # -----------------------------------
-if "Customer Name" not in df.columns:
+if "Party Name" not in df.columns:
     st.error("Column 'Party Name' not found in sheet.")
+    st.write("Available columns:", df.columns)
     st.stop()
 
-customers = sorted(df["Party Name"].astype(str).unique())
+parties = sorted(df["Party Name"].astype(str).unique())
 
-customer = st.selectbox(
-    "Select Customer Name",
-    customers
+party = st.selectbox(
+    "Select Party Name",
+    parties
 )
 
-# Filter by customer
-customer_df = df[df["Customer Name"].astype(str) == customer]
+# Filter by Party Name
+party_df = df[df["Party Name"].astype(str) == party]
 
 # -----------------------------------
 # 2️⃣ Document Number Dropdown
 # -----------------------------------
-if "Document Number" not in customer_df.columns:
+if "Document Number" not in party_df.columns:
     st.error("Column 'Document Number' not found.")
     st.stop()
 
-doc_numbers = sorted(customer_df["Document Number"].astype(str).unique())
+doc_numbers = sorted(party_df["Document Number"].astype(str).unique())
 
 doc = st.selectbox(
     "Select Document Number",
@@ -68,8 +69,8 @@ doc = st.selectbox(
 )
 
 # Filter by document
-doc_df = customer_df[
-    customer_df["Document Number"].astype(str) == doc
+doc_df = party_df[
+    party_df["Document Number"].astype(str) == doc
 ]
 
 # -----------------------------------
@@ -130,4 +131,5 @@ with col2:
 
     st.markdown("**TPI Agency**")
     st.write(row.get("TPI Agency") or "-")
+
 
