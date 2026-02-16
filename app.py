@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from sheets import load_sheet
 
 st.set_page_config(
@@ -6,80 +7,72 @@ st.set_page_config(
     layout="centered"
 )
 
-# ---------- CSS ----------
-st.markdown("""
-<style>
-body { background-color:#f4f6f8; }
-.card {
-    background:white;
-    padding:16px;
-    border-radius:12px;
-    box-shadow:0 4px 10px rgba(0,0,0,0.08);
-    margin-bottom:16px;
-}
-.label { font-size:12px; color:#6c757d; font-weight:600; }
-.value { font-size:14px; font-weight:600; word-wrap:break-word; }
-.metric { font-size:20px; font-weight:700; color:#0d6efd; }
-.header { font-size:18px; font-weight:700; margin-bottom:12px; }
-</style>
-""", unsafe_allow_html=True)
+st.title("📦 Pending Order Lookup")
 
-# ---------- Load Data ----------
+# -----------------------------
+# Load Data
+# -----------------------------
 df = load_sheet()
 
-st.markdown("<div class='header'>📦 Pending Order Dashboard</div>", unsafe_allow_html=True)
+if df.empty:
+    st.warning("No data found.")
+    st.stop()
 
-# ---------- Master Dropdown ----------
+# -----------------------------
+# Document Number Dropdown
+# -----------------------------
 doc_numbers = sorted(df["Document Number"].astype(str).unique())
-doc = st.selectbox("Document Number", doc_numbers)
 
-doc_df = df[df["Document Number"].astype(str) == doc]
-
-# ---------- SLNo Dropdown ----------
-sl_no = st.selectbox(
-    "SL No",
-    doc_df["SLNo"].astype(str).unique()
+doc = st.selectbox(
+    "Select Document Number",
+    doc_numbers
 )
 
-row = doc_df[doc_df["SLNo"].astype(str) == sl_no].iloc[0]
+# Filter based on Document
+filtered_df = df[df["Document Number"].astype(str) == doc]
 
-# ---------- ERP Card ----------
-st.markdown(f"""
-<div class="card">
-    <div class="label">Party Name</div>
-    <div class="value">{row['Party Name']}</div>
+# -----------------------------
+# SLNo Dropdown
+# -----------------------------
+sl_options = filtered_df["SLNo"].astype(str).unique()
 
-    <hr>
+sl_no = st.selectbox(
+    "Select SL No",
+    sl_options
+)
 
-    <div class="label">Part Name</div>
-    <div class="value">{row['Part Name']}</div>
+# Final selected row
+row = filtered_df[filtered_df["SLNo"].astype(str) == sl_no].iloc[0]
 
-    <hr>
+st.divider()
 
-    <div class="label">Material Grade</div>
-    <div class="value">{row['Material Grade']}</div>
+# -----------------------------
+# Professional Card Layout
+# -----------------------------
+st.markdown("### 📋 Order Details")
 
-    <div class="label">HT Priority</div>
-    <div class="value">{row['HT Priority']}</div>
+col1, col2 = st.columns(2)
 
-    <div class="label">HT Detail</div>
-    <div class="value">{row['HT Detail']}</div>
+with col1:
+    st.markdown("**Party Name**")
+    st.write(row.get("Party Name", "-"))
 
-    <hr>
+    st.markdown("**Part Name**")
+    st.write(row.get("Part Name", "-"))
 
-    <div style="display:flex; justify-content:space-between; text-align:center;">
-        <div>
-            <div class="label">Order Qty</div>
-            <div class="metric">{row['Order Qty']}</div>
-        </div>
-        <div>
-            <div class="label">Pending Qty</div>
-            <div class="metric">{row['Pending Qty']}</div>
-        </div>
-        <div>
-            <div class="label">Delivery Date</div>
-            <div class="metric">{row['DELIVERYDATE'] or '-'}</div>
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    st.markdown("**HT Detail**")
+    st.write(row.get("HT Detail", "-"))
+
+    st.markdown("**HT Priority**")
+    st.write(row.get("HT Priority", "-"))
+
+with col2:
+    st.markdown("**Order Qty**")
+    st.write(row.get("Order Qty", "-"))
+
+    st.markdown("**Pending Qty**")
+    st.write(row.get("Pending Qty", "-"))
+
+    st.markdown("**TPI Agency**")
+    st.write(row.get("TPI AGENCY", "-"))
+
