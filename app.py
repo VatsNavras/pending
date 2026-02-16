@@ -3,7 +3,7 @@ import pandas as pd
 from sheets import load_sheet
 
 # -----------------------------------
-# Page Configuration
+# Page Config
 # -----------------------------------
 st.set_page_config(
     page_title="Pending Order ERP",
@@ -11,18 +11,23 @@ st.set_page_config(
 )
 
 # -----------------------------------
-# Sidebar Refresh Button
+# Centered Logo
+# -----------------------------------
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    st.image("Logo.jpg", width=250)
+
+st.markdown("<h2 style='text-align: center;'>Pending Order ERP System</h2>", unsafe_allow_html=True)
+st.markdown("---")
+
+# -----------------------------------
+# Sidebar Refresh
 # -----------------------------------
 st.sidebar.title("Options")
 
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
     st.rerun()
-
-# -----------------------------------
-# Title
-# -----------------------------------
-st.title("📦 Pending Order Lookup")
 
 # -----------------------------------
 # Load Data
@@ -35,88 +40,75 @@ if df.empty:
 
 df.columns = df.columns.str.strip()
 
-# Validate required columns
 required_cols = ["Party Name", "Document Number", "SLNo"]
+
 for col in required_cols:
     if col not in df.columns:
         st.error(f"Column '{col}' not found in sheet.")
-        st.write("Available columns:", df.columns)
         st.stop()
 
 # -----------------------------------
-# 1️⃣ Search Type Selection
+# Search Type Selection
 # -----------------------------------
-search_type = st.selectbox(
+search_type = st.radio(
     "Search By",
     ["Party Name", "Document Number"]
 )
 
-# -----------------------------------
-# 2️⃣ Dynamic First Filter
-# -----------------------------------
+# ============================================================
+# 🔵 SEARCH BY PARTY NAME
+# ============================================================
 if search_type == "Party Name":
-    options = sorted(df["Party Name"].astype(str).unique())
-    selected_value = st.selectbox("Select Party Name", options)
-    filtered_df = df[df["Party Name"].astype(str) == selected_value]
 
-else:
-    options = sorted(df["Document Number"].astype(str).unique())
-    selected_value = st.selectbox("Select Document Number", options)
-    filtered_df = df[df["Document Number"].astype(str) == selected_value]
+    party_list = sorted(df["Party Name"].dropna().unique())
+    selected_party = st.selectbox("Select Party Name", party_list)
 
-# -----------------------------------
-# 3️⃣ SLNo Dropdown
-# -----------------------------------
-sl_options = sorted(filtered_df["SLNo"].astype(str).unique())
+    # Filter by Party
+    party_df = df[df["Party Name"] == selected_party]
 
-sl_no = st.selectbox(
-    "Select SL No",
-    sl_options
-)
+    if not party_df.empty:
 
-selected_row = filtered_df[
-    filtered_df["SLNo"].astype(str) == sl_no
-]
+        st.markdown("### 📄 All Documents for this Party")
+        st.dataframe(
+            party_df[["Document Number", "SLNo"]].drop_duplicates(),
+            use_container_width=True
+        )
 
-if selected_row.empty:
-    st.warning("No matching record found.")
-    st.stop()
+        # Select Document
+        doc_list = sorted(party_df["Document Number"].dropna().unique())
+        selected_doc = st.selectbox("Select Document Number", doc_list)
 
-row = selected_row.iloc[0]
+        doc_df = party_df[party_df["Document Number"] == selected_doc]
 
-st.divider()
+        # Select SLNo
+        slno_list = sorted(doc_df["SLNo"].dropna().unique())
+        selected_slno = st.selectbox("Select SLNo", slno_list)
 
-# -----------------------------------
-# Professional Layout
-# -----------------------------------
-st.markdown("### 📋 Order Details")
+        final_df = doc_df[doc_df["SLNo"] == selected_slno]
 
-col1, col2 = st.columns(2)
+        st.markdown("### 📄 Document Details")
+        st.dataframe(final_df, use_container_width=True)
 
-with col1:
-    st.markdown("**Party Name**")
-    st.write(row.get("Party Name") or "-")
+# ============================================================
+# 🔴 SEARCH BY DOCUMENT NUMBER
+# ============================================================
+elif search_type == "Document Number":
 
-    st.markdown("**Part Name**")
-    st.write(row.get("Part Name") or "-")
+    doc_list = sorted(df["Document Number"].dropna().unique())
+    selected_doc = st.selectbox("Select Document Number", doc_list)
 
-    st.markdown("**HT Detail**")
-    st.write(row.get("HT Detail") or "-")
+    doc_df = df[df["Document Number"] == selected_doc]
 
-    st.markdown("**HT Priority**")
-    st.write(row.get("HT Priority") or "-")
+    if not doc_df.empty:
 
-with col2:
-    st.markdown("**Document Number**")
-    st.write(row.get("Document Number") or "-")
+        st.markdown("### 👤 Party Name")
+        st.success(doc_df["Party Name"].iloc[0])
 
-    st.markdown("**Order Qty**")
-    st.write(row.get("Order Qty") or "-")
+        # Show all SLNo for this document
+        slno_list = sorted(doc_df["SLNo"].dropna().unique())
+        selected_slno = st.selectbox("Select SLNo", slno_list)
 
-    st.markdown("**Pending Qty**")
-    st.write(row.get("Pending Qty") or "-")
+        final_df = doc_df[doc_df["SLNo"] == selected_slno]
 
-    st.markdown("**TPI Agency**")
-    st.write(row.get("TPI Agency") or "-")
-
-
+        st.markdown("### 📄 Document Details")
+        st.dataframe(final_df, use_container_width=True)
