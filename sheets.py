@@ -19,8 +19,8 @@ def load_sheet():
 
     client = gspread.authorize(creds)
 
-    sheet = client.open(SPREADSHEET_NAME)
-    ws = sheet.worksheet(WORKSHEET_NAME)
+    sheet = client.open(Pending Dashboard)
+    ws = sheet.worksheet(Sheet1)
 
     data = ws.get_all_records()
     return pd.DataFrame(data)
