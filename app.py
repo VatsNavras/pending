@@ -97,4 +97,3 @@ with col2:
     st.markdown("**TPI Agency**")
     st.write(row.get("TPI Agency") or "-")
 
-
