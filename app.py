@@ -74,5 +74,5 @@ with col2:
     st.write(row.get("Pending Qty", "-"))
 
     st.markdown("**TPI Agency**")
-    st.write(row.get("TPI AGENCY", "-"))
+    st.write(row.get("TPI Agency", "-"))
 
