@@ -112,7 +112,7 @@ if search_type == "Party Name":
 
     if not party_df.empty:
 
-        st.markdown("### 📄 Available Documents")
+        st.markdown("### 📄 Available Pending Orders")
         st.dataframe(
             party_df[["Document Number", "SLNo"]].drop_duplicates(),
             use_container_width=True
