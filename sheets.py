@@ -1,15 +1,8 @@
-import streamlit as st
-import gspread
-import pandas as pd
-from google.oauth2.service_account import Credentials
-
-SPREADSHEET_NAME = "Pending Dashboard"
-WORKSHEET_NAME = "Sheet1"
-
 @st.cache_data
 def load_sheet():
     scopes = [
-        "https://www.googleapis.com/auth/spreadsheets.readonly"
+        "https://www.googleapis.com/auth/spreadsheets.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
     ]
 
     creds = Credentials.from_service_account_info(
@@ -19,7 +12,7 @@ def load_sheet():
 
     client = gspread.authorize(creds)
 
-    sheet = client.open("Pending Dashboard")
+    sheet = client.open_by_key("Pending Dashboard")
     ws = sheet.worksheet("Sheet1")
 
     data = ws.get_all_records()
