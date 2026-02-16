@@ -71,7 +71,7 @@ def show_snapshot(final_df):
         st.write(row.get("Part Name", "-"))
 
         st.markdown("**Material Grade**")
-        st.write(row.get("Part Name Material Grade", "-"))
+        st.write(row.get("Material Grade", "-"))
 
         st.markdown("**HT Priority**")
         st.write(row.get("HT Priority", "-"))
