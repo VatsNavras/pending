@@ -2,74 +2,108 @@ import streamlit as st
 import pandas as pd
 from sheets import load_sheet
 
+# -----------------------------------
+# Page Configuration
+# -----------------------------------
 st.set_page_config(
     page_title="Pending Order ERP",
     layout="centered"
 )
 
+# -----------------------------------
+# Sidebar Refresh Button
+# -----------------------------------
+st.sidebar.title("Options")
+
+if st.sidebar.button("🔄 Refresh Data"):
+    st.cache_data.clear()
+    st.rerun()
+
+# -----------------------------------
+# Main Title
+# -----------------------------------
 st.title("📦 Pending Order Lookup")
 
-# -----------------------------
-# Refresh Button (Top Right)
-# -----------------------------
-col_title, col_refresh = st.columns([8, 1])
-
-with col_refresh:
-    if st.button("🔄"):
-        st.cache_data.clear()
-        st.rerun()
-
-# -----------------------------
+# -----------------------------------
 # Load Data
-# -----------------------------
+# -----------------------------------
 df = load_sheet()
 
 if df.empty:
-    st.warning("No data found.")
+    st.warning("No data found in Google Sheet.")
     st.stop()
 
-# Ensure clean column names
+# Clean column names
 df.columns = df.columns.str.strip()
 
-# -----------------------------
-# Document Number Dropdown
-# -----------------------------
-doc_numbers = sorted(df["Document Number"].astype(str).unique())
+# -----------------------------------
+# 1️⃣ Customer Name Dropdown
+# -----------------------------------
+if "Customer Name" not in df.columns:
+    st.error("Column 'Customer Name' not found in sheet.")
+    st.stop()
+
+customers = sorted(df["Customer Name"].astype(str).unique())
+
+customer = st.selectbox(
+    "Select Customer Name",
+    customers
+)
+
+# Filter by customer
+customer_df = df[df["Customer Name"].astype(str) == customer]
+
+# -----------------------------------
+# 2️⃣ Document Number Dropdown
+# -----------------------------------
+if "Document Number" not in customer_df.columns:
+    st.error("Column 'Document Number' not found.")
+    st.stop()
+
+doc_numbers = sorted(customer_df["Document Number"].astype(str).unique())
 
 doc = st.selectbox(
     "Select Document Number",
     doc_numbers
 )
 
-# Filter based on Document
-filtered_df = df[df["Document Number"].astype(str) == doc]
+# Filter by document
+doc_df = customer_df[
+    customer_df["Document Number"].astype(str) == doc
+]
 
-# -----------------------------
-# SLNo Dropdown
-# -----------------------------
-sl_options = sorted(filtered_df["SLNo"].astype(str).unique())
+# -----------------------------------
+# 3️⃣ SLNo Dropdown
+# -----------------------------------
+if "SLNo" not in doc_df.columns:
+    st.error("Column 'SLNo' not found.")
+    st.stop()
+
+sl_options = sorted(doc_df["SLNo"].astype(str).unique())
 
 sl_no = st.selectbox(
     "Select SL No",
     sl_options
 )
 
-# Final selected row
-selected_row = filtered_df[
-    filtered_df["SLNo"].astype(str) == sl_no
+# -----------------------------------
+# Get Selected Row
+# -----------------------------------
+selected_row = doc_df[
+    doc_df["SLNo"].astype(str) == sl_no
 ]
 
 if selected_row.empty:
-    st.warning("No matching data found.")
+    st.warning("No matching record found.")
     st.stop()
 
 row = selected_row.iloc[0]
 
 st.divider()
 
-# -----------------------------
-# Professional Card Layout
-# -----------------------------
+# -----------------------------------
+# Professional Layout
+# -----------------------------------
 st.markdown("### 📋 Order Details")
 
 col1, col2 = st.columns(2)
