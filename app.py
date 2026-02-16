@@ -20,7 +20,7 @@ if st.sidebar.button("🔄 Refresh Data"):
     st.rerun()
 
 # -----------------------------------
-# Main Title
+# Title
 # -----------------------------------
 st.title("📦 Pending Order Lookup")
 
@@ -33,65 +33,49 @@ if df.empty:
     st.warning("No data found in Google Sheet.")
     st.stop()
 
-# Clean column names (removes hidden spaces)
 df.columns = df.columns.str.strip()
 
-# -----------------------------------
-# 1️⃣ Party Name Dropdown
-# -----------------------------------
-if "Party Name" not in df.columns:
-    st.error("Column 'Party Name' not found in sheet.")
-    st.write("Available columns:", df.columns)
-    st.stop()
+# Validate required columns
+required_cols = ["Party Name", "Document Number", "SLNo"]
+for col in required_cols:
+    if col not in df.columns:
+        st.error(f"Column '{col}' not found in sheet.")
+        st.write("Available columns:", df.columns)
+        st.stop()
 
-parties = sorted(df["Party Name"].astype(str).unique())
-
-party = st.selectbox(
-    "Select Party Name",
-    parties
+# -----------------------------------
+# 1️⃣ Search Type Selection
+# -----------------------------------
+search_type = st.selectbox(
+    "Search By",
+    ["Party Name", "Document Number"]
 )
 
-# Filter by Party Name
-party_df = df[df["Party Name"].astype(str) == party]
-
 # -----------------------------------
-# 2️⃣ Document Number Dropdown
+# 2️⃣ Dynamic First Filter
 # -----------------------------------
-if "Document Number" not in party_df.columns:
-    st.error("Column 'Document Number' not found.")
-    st.stop()
+if search_type == "Party Name":
+    options = sorted(df["Party Name"].astype(str).unique())
+    selected_value = st.selectbox("Select Party Name", options)
+    filtered_df = df[df["Party Name"].astype(str) == selected_value]
 
-doc_numbers = sorted(party_df["Document Number"].astype(str).unique())
-
-doc = st.selectbox(
-    "Select Document Number",
-    doc_numbers
-)
-
-# Filter by document
-doc_df = party_df[
-    party_df["Document Number"].astype(str) == doc
-]
+else:
+    options = sorted(df["Document Number"].astype(str).unique())
+    selected_value = st.selectbox("Select Document Number", options)
+    filtered_df = df[df["Document Number"].astype(str) == selected_value]
 
 # -----------------------------------
 # 3️⃣ SLNo Dropdown
 # -----------------------------------
-if "SLNo" not in doc_df.columns:
-    st.error("Column 'SLNo' not found.")
-    st.stop()
-
-sl_options = sorted(doc_df["SLNo"].astype(str).unique())
+sl_options = sorted(filtered_df["SLNo"].astype(str).unique())
 
 sl_no = st.selectbox(
     "Select SL No",
     sl_options
 )
 
-# -----------------------------------
-# Get Selected Row
-# -----------------------------------
-selected_row = doc_df[
-    doc_df["SLNo"].astype(str) == sl_no
+selected_row = filtered_df[
+    filtered_df["SLNo"].astype(str) == sl_no
 ]
 
 if selected_row.empty:
@@ -123,6 +107,9 @@ with col1:
     st.write(row.get("HT Priority") or "-")
 
 with col2:
+    st.markdown("**Document Number**")
+    st.write(row.get("Document Number") or "-")
+
     st.markdown("**Order Qty**")
     st.write(row.get("Order Qty") or "-")
 
