@@ -48,6 +48,51 @@ for col in required_cols:
         st.stop()
 
 # -----------------------------------
+# Snapshot Function
+# -----------------------------------
+def show_snapshot(final_df):
+
+    if final_df.empty:
+        st.warning("No record found.")
+        return
+
+    row = final_df.iloc[0]
+
+    st.markdown("## 📋 Order Snapshot")
+    st.markdown("---")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("**Party Name**")
+        st.write(row.get("Party Name", "-"))
+
+        st.markdown("**Part Name**")
+        st.write(row.get("Part Name", "-"))
+
+        st.markdown("**Material Grade**")
+        st.write(row.get("Part Name Material Grade", "-"))
+
+        st.markdown("**HT Priority**")
+        st.write(row.get("HT Priority", "-"))
+
+        st.markdown("**HT Detail**")
+        st.write(row.get("HT Detail", "-"))
+
+    with col2:
+        st.markdown("**Order Qty**")
+        st.write(row.get("Order Qty", "-"))
+
+        st.markdown("**Pending Qty**")
+        st.write(row.get("Pending Qty", "-"))
+
+        st.markdown("**TPI Agency**")
+        st.write(row.get("TPI Agency", "-"))
+
+        st.markdown("**CutWt**")
+        st.write(row.get("CutWt", "-"))
+
+# -----------------------------------
 # Search Type Selection
 # -----------------------------------
 search_type = st.radio(
@@ -63,31 +108,27 @@ if search_type == "Party Name":
     party_list = sorted(df["Party Name"].dropna().unique())
     selected_party = st.selectbox("Select Party Name", party_list)
 
-    # Filter by Party
     party_df = df[df["Party Name"] == selected_party]
 
     if not party_df.empty:
 
-        st.markdown("### 📄 All Documents for this Party")
+        st.markdown("### 📄 Available Documents")
         st.dataframe(
             party_df[["Document Number", "SLNo"]].drop_duplicates(),
             use_container_width=True
         )
 
-        # Select Document
         doc_list = sorted(party_df["Document Number"].dropna().unique())
         selected_doc = st.selectbox("Select Document Number", doc_list)
 
         doc_df = party_df[party_df["Document Number"] == selected_doc]
 
-        # Select SLNo
         slno_list = sorted(doc_df["SLNo"].dropna().unique())
         selected_slno = st.selectbox("Select SLNo", slno_list)
 
         final_df = doc_df[doc_df["SLNo"] == selected_slno]
 
-        st.markdown("### 📄 Document Details")
-        st.dataframe(final_df, use_container_width=True)
+        show_snapshot(final_df)
 
 # ============================================================
 # 🔴 SEARCH BY DOCUMENT NUMBER
@@ -104,11 +145,10 @@ elif search_type == "Document Number":
         st.markdown("### 👤 Party Name")
         st.success(doc_df["Party Name"].iloc[0])
 
-        # Show all SLNo for this document
         slno_list = sorted(doc_df["SLNo"].dropna().unique())
         selected_slno = st.selectbox("Select SLNo", slno_list)
 
         final_df = doc_df[doc_df["SLNo"] == selected_slno]
 
-        st.markdown("### 📄 Document Details")
-        st.dataframe(final_df, use_container_width=True)
+        show_snapshot(final_df)
+
