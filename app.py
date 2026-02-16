@@ -40,10 +40,10 @@ df.columns = df.columns.str.strip()
 # 1️⃣ Customer Name Dropdown
 # -----------------------------------
 if "Customer Name" not in df.columns:
-    st.error("Column 'Customer Name' not found in sheet.")
+    st.error("Column 'Party Name' not found in sheet.")
     st.stop()
 
-customers = sorted(df["Customer Name"].astype(str).unique())
+customers = sorted(df["Party Name"].astype(str).unique())
 
 customer = st.selectbox(
     "Select Customer Name",
