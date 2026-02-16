@@ -8,8 +8,9 @@ SPREADSHEET_ID = "1rwNOj7LzIykH3l2LW_3Ohz6IxUXT8C7ES3D5v3FRfaE"
 WORKSHEET_NAME = "Sheet1"
 
 
-@st.cache_data
+@st.cache_data(ttl=30)
 def load_sheet():
+
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets.readonly",
         "https://www.googleapis.com/auth/drive.readonly",
