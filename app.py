@@ -9,6 +9,10 @@ st.set_page_config(
 
 st.title("📦 Pending Order Lookup")
 
+if st.button("🔄 Refresh Data"):
+    st.cache_data.clear()
+
+
 # -----------------------------
 # Load Data
 # -----------------------------
