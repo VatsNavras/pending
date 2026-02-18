@@ -2,17 +2,13 @@ import streamlit as st
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
+from datetime import datetime
 
+SPREADSHEET_ID = st.secrets["SPREADSHEET_ID"]
+MAIN_SHEET = "Sheet1"
+STATUS_SHEET = "Sheet2"
 
-SPREADSHEET_ID = "1xCFURsxL3xv6zeN9ElYMPaE_A5sBOZewOZAH1cWdT0A"
-WORKSHEET_NAME = "Sheet1"
-
-
-# -----------------------------------
-# CONNECT TO GOOGLE SHEET (READ + WRITE)
-# -----------------------------------
-def connect_to_sheet():
-
+def connect():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
@@ -24,67 +20,55 @@ def connect_to_sheet():
     )
 
     client = gspread.authorize(creds)
+    return client.open_by_key(SPREADSHEET_ID)
 
-    sheet = client.open_by_key(SPREADSHEET_ID)
-    worksheet = sheet.worksheet(WORKSHEET_NAME)
-
-    return worksheet
-
-
-# -----------------------------------
-# LOAD DATA (CACHED)
-# -----------------------------------
 @st.cache_data(ttl=30)
 def load_sheet():
-
-    worksheet = connect_to_sheet()
+    sheet = connect()
+    worksheet = sheet.worksheet(MAIN_SHEET)
     data = worksheet.get_all_records()
-
     return pd.DataFrame(data)
 
+def get_status_sheet():
+    sheet = connect()
+    try:
+        worksheet = sheet.worksheet(STATUS_SHEET)
+    except:
+        worksheet = sheet.add_worksheet(title=STATUS_SHEET, rows="1000", cols="10")
+        worksheet.append_row([
+            "Document Number",
+            "SLNo",
+            "Status",
+            "Updated By",
+            "Last Updated"
+        ])
+    return worksheet
 
-# -----------------------------------
-# UPDATE STATUS FUNCTION
-# -----------------------------------
-def update_status_in_sheet(document, slno, status, updated_by, timestamp):
-
-    worksheet = connect_to_sheet()
+def update_status_in_sheet(document, slno, status, updated_by):
+    worksheet = get_status_sheet()
     data = worksheet.get_all_records()
     df = pd.DataFrame(data)
 
-    # Find matching row
-    row_index = df[
+    timestamp = str(datetime.now())
+
+    if df.empty:
+        worksheet.append_row([document, slno, status, updated_by, timestamp])
+        return
+
+    match = df[
         (df["Document Number"] == document) &
         (df["SLNo"] == slno)
-    ].index
+    ]
 
-    if not row_index.empty:
+    if not match.empty:
+        row_number = match.index[0] + 2
+        worksheet.update(f"A{row_number}:E{row_number}", [[
+            document, slno, status, updated_by, timestamp
+        ]])
+    else:
+        worksheet.append_row([document, slno, status, updated_by, timestamp])
 
-        sheet_row_number = row_index[0] + 2  # +2 because sheet starts at row 2
-
-        worksheet.update_cell(
-            sheet_row_number,
-            df.columns.get_loc("Status") + 1,
-            status
-        )
-
-        worksheet.update_cell(
-            sheet_row_number,
-            df.columns.get_loc("Updated By") + 1,
-            updated_by
-        )
-
-        worksheet.update_cell(
-            sheet_row_number,
-            df.columns.get_loc("Last Updated") + 1,
-            timestamp
-        )
-
-# -----------------------------------
-# GET STATUS FOR DISPLAY
-# -----------------------------------
 def get_status(document, slno):
-
     worksheet = get_status_sheet()
     data = worksheet.get_all_records()
     df = pd.DataFrame(data)
