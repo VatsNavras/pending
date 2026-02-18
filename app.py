@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 from sheets import load_sheet, update_status, ensure_columns
 
+print("Sheets file loaded")
+
+
 st.set_page_config(page_title="Order Status App", layout="wide")
 
 st.title("Order Status Management")
