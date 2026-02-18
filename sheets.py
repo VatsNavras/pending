@@ -79,3 +79,26 @@ def update_status_in_sheet(document, slno, status, updated_by, timestamp):
             df.columns.get_loc("Last Updated") + 1,
             timestamp
         )
+
+# -----------------------------------
+# GET STATUS FOR DISPLAY
+# -----------------------------------
+def get_status(document, slno):
+
+    worksheet = get_status_sheet()
+    data = worksheet.get_all_records()
+    df = pd.DataFrame(data)
+
+    if df.empty:
+        return "Not Updated"
+
+    match = df[
+        (df["Document Number"] == document) &
+        (df["SLNo"] == slno)
+    ]
+
+    if not match.empty:
+        return match.iloc[0]["Status"]
+
+    return "Not Updated"
+
