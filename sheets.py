@@ -3,15 +3,10 @@ import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 
-# ===============================
-# CONFIG
-# ===============================
 SPREADSHEET_ID = st.secrets["SPREADSHEET_ID"]
 WORKSHEET_NAME = "Sheet2"
 
-# ===============================
-# CONNECT TO GOOGLE SHEET
-# ===============================
+
 def connect():
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
@@ -21,9 +16,6 @@ def connect():
     return client.open_by_key(SPREADSHEET_ID)
 
 
-# ===============================
-# LOAD SHEET (CACHED)
-# ===============================
 @st.cache_data(ttl=60)
 def load_sheet():
     sheet = connect()
@@ -37,31 +29,24 @@ def load_sheet():
     return pd.DataFrame(data)
 
 
-# ===============================
-# ENSURE COLUMNS EXIST
-# ===============================
 def ensure_columns():
     sheet = connect()
     worksheet = sheet.worksheet(WORKSHEET_NAME)
 
     headers = worksheet.row_values(1)
-
-    required_cols = ["Document Number", "Sl No", "Status"]
+    required = ["Document Number", "Sl No", "Status"]
 
     if not headers:
-        worksheet.append_row(required_cols)
+        worksheet.append_row(required)
         return
 
-    for col in required_cols:
+    for col in required:
         if col not in headers:
             headers.append(col)
 
     worksheet.update("A1", [headers])
 
 
-# ===============================
-# UPDATE STATUS
-# ===============================
 def update_status(document_number, slno, new_status):
     sheet = connect()
     worksheet = sheet.worksheet(WORKSHEET_NAME)
@@ -77,8 +62,5 @@ def update_status(document_number, slno, new_status):
             worksheet.update_cell(i, col_index, new_status)
             return
 
-    # If not found, append new row
     worksheet.append_row([document_number, slno, new_status])
-
-
 
