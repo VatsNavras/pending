@@ -1,17 +1,48 @@
 import streamlit as st
 import pandas as pd
-from sheets import load_sheet
+from sheets import load_sheet, update_status_in_sheet
+from datetime import datetime
 
 # -----------------------------------
-# Page Config
+# USER DATABASE (TEMPORARY)
 # -----------------------------------
-st.set_page_config(
-    page_title="Pending Order ERP",
-    layout="centered"
-)
+USERS = {
+    "viewer1": {"password": "1234", "role": "viewer"},
+    "planner1": {"password": "1234", "role": "planning"}
+}
 
 # -----------------------------------
-# Centered Logo
+# PAGE CONFIG
+# -----------------------------------
+st.set_page_config(page_title="Pending Order ERP", layout="centered")
+
+# -----------------------------------
+# LOGIN SYSTEM
+# -----------------------------------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+def login():
+    st.title("🔐 Login")
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        if username in USERS and USERS[username]["password"] == password:
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.session_state.role = USERS[username]["role"]
+            st.rerun()
+        else:
+            st.error("Invalid Username or Password")
+
+if not st.session_state.logged_in:
+    login()
+    st.stop()
+
+# -----------------------------------
+# HEADER
 # -----------------------------------
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
@@ -20,35 +51,30 @@ with col2:
 st.markdown("<h2 style='text-align: center;'>Pending Order ERP System</h2>", unsafe_allow_html=True)
 st.markdown("---")
 
-# -----------------------------------
-# Sidebar Refresh
-# -----------------------------------
-st.sidebar.title("Options")
+st.sidebar.success(f"Logged in as: {st.session_state.username}")
+st.sidebar.info(f"Role: {st.session_state.role}")
+
+if st.sidebar.button("Logout"):
+    st.session_state.clear()
+    st.rerun()
 
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
     st.rerun()
 
 # -----------------------------------
-# Load Data
+# LOAD DATA
 # -----------------------------------
 df = load_sheet()
 
 if df.empty:
-    st.warning("No data found in Google Sheet.")
+    st.warning("No data found.")
     st.stop()
 
 df.columns = df.columns.str.strip()
 
-required_cols = ["Party Name", "Document Number", "SLNo"]
-
-for col in required_cols:
-    if col not in df.columns:
-        st.error(f"Column '{col}' not found in sheet.")
-        st.stop()
-
 # -----------------------------------
-# Snapshot Function
+# SNAPSHOT FUNCTION
 # -----------------------------------
 def show_snapshot(final_df):
 
@@ -64,45 +90,52 @@ def show_snapshot(final_df):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("**Party Name**")
-        st.write(row.get("Party Name", "-"))
-
-        st.markdown("**Part Name**")
-        st.write(row.get("Part Name", "-"))
-
-        st.markdown("**Material Grade**")
-        st.write(row.get("Material Grade", "-"))
-
-        st.markdown("**HT Priority**")
-        st.write(row.get("HT Priority", "-"))
-
-        st.markdown("**HT Detail**")
-        st.write(row.get("HT Detail", "-"))
+        st.write("**Party Name**", row.get("Party Name", "-"))
+        st.write("**Part Name**", row.get("Part Name", "-"))
+        st.write("**Material Grade**", row.get("Material Grade", "-"))
+        st.write("**HT Priority**", row.get("HT Priority", "-"))
+        st.write("**HT Detail**", row.get("HT Detail", "-"))
 
     with col2:
-        st.markdown("**Order Qty**")
-        st.write(row.get("Order Qty", "-"))
+        st.write("**Order Qty**", row.get("Order Qty", "-"))
+        st.write("**Pending Qty**", row.get("Pending Qty", "-"))
+        st.write("**TPI Agency**", row.get("TPI Agency", "-"))
+        st.write("**CutWt**", row.get("CutWt", "-"))
 
-        st.markdown("**Pending Qty**")
-        st.write(row.get("Pending Qty", "-"))
+    st.markdown("---")
+    st.write("**Current Status:**", row.get("Status", "Not Updated"))
 
-        st.markdown("**TPI Agency**")
-        st.write(row.get("TPI Agency", "-"))
+    # -----------------------------------
+    # PLANNING ROLE CAN UPDATE STATUS
+    # -----------------------------------
+    if st.session_state.role == "planning":
 
-        st.markdown("**CutWt**")
-        st.write(row.get("CutWt", "-"))
+        st.markdown("### ✏ Update Status")
+
+        new_status = st.selectbox(
+            "Select New Status",
+            ["Pending", "In Production", "Completed", "Dispatched"]
+        )
+
+        if st.button("Update Status"):
+
+            update_status_in_sheet(
+                document=row["Document Number"],
+                slno=row["SLNo"],
+                status=new_status,
+                updated_by=st.session_state.username,
+                timestamp=str(datetime.now())
+            )
+
+            st.success("Status Updated Successfully")
+            st.cache_data.clear()
+            st.rerun()
 
 # -----------------------------------
-# Search Type Selection
+# SEARCH
 # -----------------------------------
-search_type = st.radio(
-    "Search By",
-    ["Party Name", "Document Number"]
-)
+search_type = st.radio("Search By", ["Party Name", "Document Number"])
 
-# ============================================================
-# 🔵 SEARCH BY PARTY NAME
-# ============================================================
 if search_type == "Party Name":
 
     party_list = sorted(df["Party Name"].dropna().unique())
@@ -111,12 +144,6 @@ if search_type == "Party Name":
     party_df = df[df["Party Name"] == selected_party]
 
     if not party_df.empty:
-
-        st.markdown("### 📄 Available Pending Orders")
-        st.dataframe(
-            party_df[["Document Number", "SLNo"]].drop_duplicates(),
-            use_container_width=True
-        )
 
         doc_list = sorted(party_df["Document Number"].dropna().unique())
         selected_doc = st.selectbox("Select Document Number", doc_list)
@@ -130,10 +157,7 @@ if search_type == "Party Name":
 
         show_snapshot(final_df)
 
-# ============================================================
-# 🔴 SEARCH BY DOCUMENT NUMBER
-# ============================================================
-elif search_type == "Document Number":
+else:
 
     doc_list = sorted(df["Document Number"].dropna().unique())
     selected_doc = st.selectbox("Select Document Number", doc_list)
@@ -142,7 +166,6 @@ elif search_type == "Document Number":
 
     if not doc_df.empty:
 
-        st.markdown("### 👤 Party Name")
         st.success(doc_df["Party Name"].iloc[0])
 
         slno_list = sorted(doc_df["SLNo"].dropna().unique())
@@ -151,4 +174,5 @@ elif search_type == "Document Number":
         final_df = doc_df[doc_df["SLNo"] == selected_slno]
 
         show_snapshot(final_df)
+
 
