@@ -5,6 +5,10 @@ from sheets import load_sheet, update_status_in_sheet, get_status
 # -----------------------------------
 # USER DATABASE (TEMP)
 # -----------------------------------
+
+import streamlit as st
+st.write("Current Sheet ID:", st.secrets["SPREADSHEET_ID"])
+
 USERS = {
     "viewer1": {"password": "1234", "role": "viewer"},
     "planner1": {"password": "1234", "role": "planning"}
