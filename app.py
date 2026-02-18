@@ -5,10 +5,6 @@ from sheets import load_sheet, update_status_in_sheet, get_status
 # -----------------------------------
 # USER DATABASE (TEMP)
 # -----------------------------------
-
-import streamlit as st
-st.write("Current Sheet ID:", st.secrets["SPREADSHEET_ID"])
-
 USERS = {
     "viewer1": {"password": "1234", "role": "viewer"},
     "planner1": {"password": "1234", "role": "planning"}
@@ -77,15 +73,15 @@ if df.empty:
 df.columns = df.columns.str.strip()
 
 # -----------------------------------
-# SNAPSHOT FUNCTION
+# SNAPSHOT FUNCTION (Bulk Update Version)
 # -----------------------------------
-def show_snapshot(final_df):
+def show_snapshot(doc_df):
 
-    if final_df.empty:
+    if doc_df.empty:
         st.warning("No record found.")
         return
 
-    row = final_df.iloc[0]
+    first_row = doc_df.iloc[0]
 
     st.markdown("## 📋 Order Snapshot")
     st.markdown("---")
@@ -93,45 +89,74 @@ def show_snapshot(final_df):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.write("**Party Name:**", row.get("Party Name", "-"))
-        st.write("**Part Name:**", row.get("Part Name", "-"))
-        st.write("**Material Grade:**", row.get("Material Grade", "-"))
-        st.write("**HT Priority:**", row.get("HT Priority", "-"))
-        st.write("**HT Detail:**", row.get("HT Detail", "-"))
+        st.write("**Party Name:**", first_row.get("Party Name", "-"))
+        st.write("**Part Name:**", first_row.get("Part Name", "-"))
+        st.write("**Material Grade:**", first_row.get("Material Grade", "-"))
+        st.write("**HT Priority:**", first_row.get("HT Priority", "-"))
+        st.write("**HT Detail:**", first_row.get("HT Detail", "-"))
 
     with col2:
-        st.write("**Order Qty:**", row.get("Order Qty", "-"))
-        st.write("**Pending Qty:**", row.get("Pending Qty", "-"))
-        st.write("**TPI Agency:**", row.get("TPI Agency", "-"))
-        st.write("**CutWt:**", row.get("CutWt", "-"))
+        st.write("**Order Qty:**", first_row.get("Order Qty", "-"))
+        st.write("**Pending Qty:**", first_row.get("Pending Qty", "-"))
+        st.write("**TPI Agency:**", first_row.get("TPI Agency", "-"))
+        st.write("**CutWt:**", first_row.get("CutWt", "-"))
 
     st.markdown("---")
 
-    current_status = get_status(row["Document Number"], row["SLNo"])
-    st.write("### Current Status:", current_status)
-
-    # Planning role can update
+    # -----------------------------------
+    # STATUS UPDATE SECTION
+    # -----------------------------------
     if st.session_state.role == "planning":
 
         st.markdown("### ✏ Update Status")
+
+        document_number = str(first_row["Document Number"])
+
+        # Select All checkbox
+        select_all = st.checkbox("✅ Select All SLNo")
+
+        selected_slnos = []
+
+        for index, row in doc_df.iterrows():
+
+            slno = str(row["SLNo"])
+            current_status = get_status(document_number, slno)
+
+            if select_all:
+                selected = True
+            else:
+                selected = st.checkbox(
+                    f"SLNo: {slno} | Current Status: {current_status}",
+                    key=f"chk_{slno}"
+                )
+
+            if selected:
+                selected_slnos.append(slno)
+
+        st.markdown("---")
 
         new_status = st.selectbox(
             "Select New Status",
             ["Pending", "In Production", "Completed", "Dispatched"]
         )
 
-        if st.button("Update Status"):
-            update_status_in_sheet(
-                document=row["Document Number"],
-                slno=row["SLNo"],
-                status=new_status,
-                updated_by=st.session_state.username
-            )
+        if st.button("🚀 Update Selected"):
+
+            if not selected_slnos:
+                st.warning("Please select at least one SLNo")
+                return
+
+            for slno in selected_slnos:
+                update_status_in_sheet(
+                    document=document_number,
+                    slno=slno,
+                    status=new_status,
+                    updated_by=st.session_state.username
+                )
 
             st.success("Status Updated Successfully")
             st.cache_data.clear()
             st.rerun()
-
 
 # -----------------------------------
 # SEARCH
@@ -152,12 +177,7 @@ if search_type == "Party Name":
 
         doc_df = party_df[party_df["Document Number"] == selected_doc]
 
-        slno_list = sorted(doc_df["SLNo"].dropna().unique())
-        selected_slno = st.selectbox("Select SLNo", slno_list)
-
-        final_df = doc_df[doc_df["SLNo"] == selected_slno]
-
-        show_snapshot(final_df)
+        show_snapshot(doc_df)
 
 else:
 
@@ -170,11 +190,7 @@ else:
 
         st.success(doc_df["Party Name"].iloc[0])
 
-        slno_list = sorted(doc_df["SLNo"].dropna().unique())
-        selected_slno = st.selectbox("Select SLNo", slno_list)
+        show_snapshot(doc_df)
 
-        final_df = doc_df[doc_df["SLNo"] == selected_slno]
-
-        show_snapshot(final_df)
 
 
