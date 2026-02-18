@@ -1,12 +1,12 @@
-import gspread
-from google.oauth2.service_account import Credentials
 import streamlit as st
+import gspread
+import pandas as pd
+from google.oauth2.service_account import Credentials
 
-
-# ----------------------------
-# CONNECT TO GOOGLE SHEETS
-# ----------------------------
-def connect_sheet():
+# -----------------------------------
+# CONNECT TO GOOGLE SHEET
+# -----------------------------------
+def connect():
 
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -25,59 +25,86 @@ def connect_sheet():
     return spreadsheet
 
 
-# ----------------------------
-# GET OR CREATE SHEET2
-# ----------------------------
-def get_sheet2():
+# -----------------------------------
+# LOAD MAIN ERP DATA (Sheet1)
+# -----------------------------------
+@st.cache_data(ttl=60)
+def load_sheet():
 
-    spreadsheet = connect_sheet()
+    spreadsheet = connect()
+
+    worksheet = spreadsheet.worksheet("Sheet1")
+
+    data = worksheet.get_all_records()
+
+    if not data:
+        return pd.DataFrame()
+
+    return pd.DataFrame(data)
+
+
+# -----------------------------------
+# GET OR CREATE STATUS SHEET (Sheet2)
+# -----------------------------------
+def get_status_sheet():
+
+    spreadsheet = connect()
 
     try:
         worksheet = spreadsheet.worksheet("Sheet2")
     except:
-        # Create Sheet2 if not exists
         worksheet = spreadsheet.add_worksheet(
             title="Sheet2",
             rows="1000",
-            cols="20"
+            cols="10"
+        )
+
+        worksheet.append_row(
+            ["Document Number", "SLNo", "Status", "Updated By"]
         )
 
     return worksheet
 
 
-# ----------------------------
-# ENSURE HEADERS EXIST
-# ----------------------------
-def ensure_headers():
+# -----------------------------------
+# GET CURRENT STATUS
+# -----------------------------------
+def get_status(document_number, slno):
 
-    sheet = get_sheet2()
+    sheet = get_status_sheet()
 
-    expected_headers = ["Date", "Name", "Amount", "Status"]
+    records = sheet.get_all_records()
 
-    current_headers = sheet.row_values(1)
+    for row in records:
+        if (
+            str(row.get("Document Number")) == str(document_number)
+            and str(row.get("SLNo")) == str(slno)
+        ):
+            return row.get("Status", "Pending")
 
-    if current_headers != expected_headers:
-        sheet.update("A1:D1", [expected_headers])
-
-
-# ----------------------------
-# ADD ENTRY TO SHEET2
-# ----------------------------
-def add_entry(date, name, amount, status):
-
-    ensure_headers()
-
-    sheet = get_sheet2()
-
-    sheet.append_row([date, name, amount, status])
+    return "Pending"
 
 
-# ----------------------------
-# GET ALL DATA FROM SHEET2
-# ----------------------------
-def get_all_data():
+# -----------------------------------
+# UPDATE STATUS
+# -----------------------------------
+def update_status_in_sheet(document, slno, status, updated_by):
 
-    sheet = get_sheet2()
+    sheet = get_status_sheet()
 
-    return sheet.get_all_records()
+    records = sheet.get_all_records()
+
+    # Check if already exists → update
+    for i, row in enumerate(records, start=2):
+        if (
+            str(row.get("Document Number")) == str(document)
+            and str(row.get("SLNo")) == str(slno)
+        ):
+            sheet.update_cell(i, 3, status)       # Status column
+            sheet.update_cell(i, 4, updated_by)   # Updated By column
+            return
+
+    # If not found → append new row
+    sheet.append_row([document, slno, status, updated_by])
+
 
