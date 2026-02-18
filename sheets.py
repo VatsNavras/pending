@@ -8,12 +8,14 @@ SPREADSHEET_ID = "1rwNOj7LzIykH3l2LW_3Ohz6IxUXT8C7ES3D5v3FRfaE"
 WORKSHEET_NAME = "Sheet1"
 
 
-@st.cache_data(ttl=30)
-def load_sheet():
+# -----------------------------------
+# CONNECT TO GOOGLE SHEET (READ + WRITE)
+# -----------------------------------
+def connect_to_sheet():
 
     scopes = [
-        "https://www.googleapis.com/auth/spreadsheets.readonly",
-        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
     ]
 
     creds = Credentials.from_service_account_info(
@@ -26,6 +28,54 @@ def load_sheet():
     sheet = client.open_by_key(SPREADSHEET_ID)
     worksheet = sheet.worksheet(WORKSHEET_NAME)
 
+    return worksheet
+
+
+# -----------------------------------
+# LOAD DATA (CACHED)
+# -----------------------------------
+@st.cache_data(ttl=30)
+def load_sheet():
+
+    worksheet = connect_to_sheet()
     data = worksheet.get_all_records()
 
     return pd.DataFrame(data)
+
+
+# -----------------------------------
+# UPDATE STATUS FUNCTION
+# -----------------------------------
+def update_status_in_sheet(document, slno, status, updated_by, timestamp):
+
+    worksheet = connect_to_sheet()
+    data = worksheet.get_all_records()
+    df = pd.DataFrame(data)
+
+    # Find matching row
+    row_index = df[
+        (df["Document Number"] == document) &
+        (df["SLNo"] == slno)
+    ].index
+
+    if not row_index.empty:
+
+        sheet_row_number = row_index[0] + 2  # +2 because sheet starts at row 2
+
+        worksheet.update_cell(
+            sheet_row_number,
+            df.columns.get_loc("Status") + 1,
+            status
+        )
+
+        worksheet.update_cell(
+            sheet_row_number,
+            df.columns.get_loc("Updated By") + 1,
+            updated_by
+        )
+
+        worksheet.update_cell(
+            sheet_row_number,
+            df.columns.get_loc("Last Updated") + 1,
+            timestamp
+        )
