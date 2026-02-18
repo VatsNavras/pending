@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
-from sheets import load_sheet, update_status_in_sheet
-from datetime import datetime
+from sheets import load_sheet, update_status_in_sheet, get_status
 
 # -----------------------------------
-# USER DATABASE (TEMPORARY)
+# USER DATABASE (TEMP)
 # -----------------------------------
 USERS = {
     "viewer1": {"password": "1234", "role": "viewer"},
@@ -90,24 +89,24 @@ def show_snapshot(final_df):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.write("**Party Name**", row.get("Party Name", "-"))
-        st.write("**Part Name**", row.get("Part Name", "-"))
-        st.write("**Material Grade**", row.get("Material Grade", "-"))
-        st.write("**HT Priority**", row.get("HT Priority", "-"))
-        st.write("**HT Detail**", row.get("HT Detail", "-"))
+        st.write("**Party Name:**", row.get("Party Name", "-"))
+        st.write("**Part Name:**", row.get("Part Name", "-"))
+        st.write("**Material Grade:**", row.get("Material Grade", "-"))
+        st.write("**HT Priority:**", row.get("HT Priority", "-"))
+        st.write("**HT Detail:**", row.get("HT Detail", "-"))
 
     with col2:
-        st.write("**Order Qty**", row.get("Order Qty", "-"))
-        st.write("**Pending Qty**", row.get("Pending Qty", "-"))
-        st.write("**TPI Agency**", row.get("TPI Agency", "-"))
-        st.write("**CutWt**", row.get("CutWt", "-"))
+        st.write("**Order Qty:**", row.get("Order Qty", "-"))
+        st.write("**Pending Qty:**", row.get("Pending Qty", "-"))
+        st.write("**TPI Agency:**", row.get("TPI Agency", "-"))
+        st.write("**CutWt:**", row.get("CutWt", "-"))
 
     st.markdown("---")
-    st.write("**Current Status:**", row.get("Status", "Not Updated"))
 
-    # -----------------------------------
-    # PLANNING ROLE CAN UPDATE STATUS
-    # -----------------------------------
+    current_status = get_status(row["Document Number"], row["SLNo"])
+    st.write("### Current Status:", current_status)
+
+    # Planning role can update
     if st.session_state.role == "planning":
 
         st.markdown("### ✏ Update Status")
@@ -118,18 +117,17 @@ def show_snapshot(final_df):
         )
 
         if st.button("Update Status"):
-
             update_status_in_sheet(
                 document=row["Document Number"],
                 slno=row["SLNo"],
                 status=new_status,
-                updated_by=st.session_state.username,
-                timestamp=str(datetime.now())
+                updated_by=st.session_state.username
             )
 
             st.success("Status Updated Successfully")
             st.cache_data.clear()
             st.rerun()
+
 
 # -----------------------------------
 # SEARCH
