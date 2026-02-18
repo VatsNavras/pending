@@ -1,66 +1,83 @@
-import streamlit as st
 import gspread
-import pandas as pd
 from google.oauth2.service_account import Credentials
-
-SPREADSHEET_ID = st.secrets["SPREADSHEET_ID"]
-WORKSHEET_NAME = "Sheet2"
+import streamlit as st
 
 
-def connect():
+# ----------------------------
+# CONNECT TO GOOGLE SHEETS
+# ----------------------------
+def connect_sheet():
+
+    scope = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        scopes=scope
     )
+
     client = gspread.authorize(creds)
-    return client.open_by_key(SPREADSHEET_ID)
+
+    spreadsheet = client.open_by_key(st.secrets["SPREADSHEET_ID"])
+
+    return spreadsheet
 
 
-@st.cache_data(ttl=60)
-def load_sheet():
-    sheet = connect()
-    worksheet = sheet.worksheet(WORKSHEET_NAME)
+# ----------------------------
+# GET OR CREATE SHEET2
+# ----------------------------
+def get_sheet2():
 
-    data = worksheet.get_all_records()
+    spreadsheet = connect_sheet()
 
-    if not data:
-        return pd.DataFrame(columns=["Document Number", "Sl No", "Status"])
+    try:
+        worksheet = spreadsheet.worksheet("Sheet2")
+    except:
+        # Create Sheet2 if not exists
+        worksheet = spreadsheet.add_worksheet(
+            title="Sheet2",
+            rows="1000",
+            cols="20"
+        )
 
-    return pd.DataFrame(data)
-
-
-def ensure_columns():
-    sheet = connect()
-    worksheet = sheet.worksheet(WORKSHEET_NAME)
-
-    headers = worksheet.row_values(1)
-    required = ["Document Number", "Sl No", "Status"]
-
-    if not headers:
-        worksheet.append_row(required)
-        return
-
-    for col in required:
-        if col not in headers:
-            headers.append(col)
-
-    worksheet.update("A1", [headers])
+    return worksheet
 
 
-def update_status(document_number, slno, new_status):
-    sheet = connect()
-    worksheet = sheet.worksheet(WORKSHEET_NAME)
+# ----------------------------
+# ENSURE HEADERS EXIST
+# ----------------------------
+def ensure_headers():
 
-    records = worksheet.get_all_records()
+    sheet = get_sheet2()
 
-    for i, row in enumerate(records, start=2):
-        if (
-            str(row.get("Document Number")) == str(document_number)
-            and str(row.get("Sl No")) == str(slno)
-        ):
-            col_index = worksheet.row_values(1).index("Status") + 1
-            worksheet.update_cell(i, col_index, new_status)
-            return
+    expected_headers = ["Date", "Name", "Amount", "Status"]
 
-    worksheet.append_row([document_number, slno, new_status])
+    current_headers = sheet.row_values(1)
+
+    if current_headers != expected_headers:
+        sheet.update("A1:D1", [expected_headers])
+
+
+# ----------------------------
+# ADD ENTRY TO SHEET2
+# ----------------------------
+def add_entry(date, name, amount, status):
+
+    ensure_headers()
+
+    sheet = get_sheet2()
+
+    sheet.append_row([date, name, amount, status])
+
+
+# ----------------------------
+# GET ALL DATA FROM SHEET2
+# ----------------------------
+def get_all_data():
+
+    sheet = get_sheet2()
+
+    return sheet.get_all_records()
 
