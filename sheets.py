@@ -2,160 +2,83 @@ import streamlit as st
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
-from datetime import datetime
 
-
-# ==============================
+# ===============================
 # CONFIG
-# ==============================
+# ===============================
 SPREADSHEET_ID = st.secrets["SPREADSHEET_ID"]
-MAIN_SHEET = "Sheet1"
-STATUS_SHEET = "Sheet2"
+WORKSHEET_NAME = "Sheet2"
 
-
-# ==============================
+# ===============================
 # CONNECT TO GOOGLE SHEET
-# ==============================
+# ===============================
 def connect():
-
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
-    ]
-
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
-        scopes=scopes,
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
     )
-
     client = gspread.authorize(creds)
     return client.open_by_key(SPREADSHEET_ID)
 
 
-# ==============================
-# LOAD MAIN DATA (Sheet1)
-# ==============================
-@st.cache_data(ttl=30)
+# ===============================
+# LOAD SHEET (CACHED)
+# ===============================
+@st.cache_data(ttl=60)
 def load_sheet():
-
     sheet = connect()
-    worksheet = sheet.worksheet(MAIN_SHEET)
+    worksheet = sheet.worksheet(WORKSHEET_NAME)
 
     data = worksheet.get_all_records()
-    df = pd.DataFrame(data)
 
-    if not df.empty:
-        df.columns = df.columns.str.strip()
+    if not data:
+        return pd.DataFrame(columns=["Document Number", "Sl No", "Status"])
 
-    return df
+    return pd.DataFrame(data)
 
 
-# ==============================
-# GET OR CREATE STATUS SHEET (Sheet2)
-# ==============================
-def get_status_sheet():
-
+# ===============================
+# ENSURE COLUMNS EXIST
+# ===============================
+def ensure_columns():
     sheet = connect()
+    worksheet = sheet.worksheet(WORKSHEET_NAME)
 
-    try:
-        worksheet = sheet.worksheet(STATUS_SHEET)
-    except:
-        worksheet = sheet.add_worksheet(
-            title=STATUS_SHEET,
-            rows="1000",
-            cols="10"
-        )
+    headers = worksheet.row_values(1)
 
-        # Create header automatically
-        worksheet.append_row([
-            "Document Number",
-            "SLNo",
-            "Status",
-            "Updated By",
-            "Last Updated"
-        ])
+    required_cols = ["Document Number", "Sl No", "Status"]
 
-    return worksheet
-
-
-# ==============================
-# UPDATE STATUS (WRITE TO SHEET2)
-# ==============================
-def update_status_in_sheet(document, slno, status, updated_by):
-
-    worksheet = get_status_sheet()
-
-    # Convert everything to string (prevents JSON error)
-    document = str(document)
-    slno = str(slno)
-    status = str(status)
-    updated_by = str(updated_by)
-    timestamp = str(datetime.now())
-
-    data = worksheet.get_all_records()
-    df = pd.DataFrame(data)
-
-    # If sheet empty → insert first row
-    if df.empty:
-        worksheet.append_row(
-            [document, slno, status, updated_by, timestamp]
-        )
+    if not headers:
+        worksheet.append_row(required_cols)
         return
 
-    # Clean column names
-    df.columns = df.columns.str.strip()
+    for col in required_cols:
+        if col not in headers:
+            headers.append(col)
 
-    # Ensure comparison works
-    df["Document Number"] = df["Document Number"].astype(str)
-    df["SLNo"] = df["SLNo"].astype(str)
-
-    match = df[
-        (df["Document Number"] == document) &
-        (df["SLNo"] == slno)
-    ]
-
-    if not match.empty:
-        row_number = match.index[0] + 2  # +2 because header row exists
-
-        worksheet.update(
-            f"A{row_number}:E{row_number}",
-            [[document, slno, status, updated_by, timestamp]]
-        )
-    else:
-        worksheet.append_row(
-            [document, slno, status, updated_by, timestamp]
-        )
+    worksheet.update("A1", [headers])
 
 
-# ==============================
-# GET STATUS FOR DISPLAY
-# ==============================
-def get_status(document, slno):
+# ===============================
+# UPDATE STATUS
+# ===============================
+def update_status(document_number, slno, new_status):
+    sheet = connect()
+    worksheet = sheet.worksheet(WORKSHEET_NAME)
 
-    worksheet = get_status_sheet()
+    records = worksheet.get_all_records()
 
-    document = str(document)
-    slno = str(slno)
+    for i, row in enumerate(records, start=2):
+        if (
+            str(row.get("Document Number")) == str(document_number)
+            and str(row.get("Sl No")) == str(slno)
+        ):
+            col_index = worksheet.row_values(1).index("Status") + 1
+            worksheet.update_cell(i, col_index, new_status)
+            return
 
-    data = worksheet.get_all_records()
-    df = pd.DataFrame(data)
+    # If not found, append new row
+    worksheet.append_row([document_number, slno, new_status])
 
-    if df.empty:
-        return "Not Updated"
-
-    df.columns = df.columns.str.strip()
-
-    df["Document Number"] = df["Document Number"].astype(str)
-    df["SLNo"] = df["SLNo"].astype(str)
-
-    match = df[
-        (df["Document Number"] == document) &
-        (df["SLNo"] == slno)
-    ]
-
-    if not match.empty:
-        return match.iloc[0]["Status"]
-
-    return "Not Updated"
 
 
