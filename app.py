@@ -3,7 +3,58 @@ import pandas as pd
 from sheets import load_sheet
 
 # -----------------------------------
-# Page Config
+# USER PASSWORDS
+# -----------------------------------
+USERS = {
+    "planning": "KDT@78",
+    "operations": "KDT@98"
+}
+
+# -----------------------------------
+# SESSION STATE INIT
+# -----------------------------------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "role" not in st.session_state:
+    st.session_state.role = None
+
+
+# -----------------------------------
+# LOGIN FUNCTION
+# -----------------------------------
+def login():
+
+    st.set_page_config(
+        page_title="Pending Order ERP",
+        layout="centered"
+    )
+
+    st.title("🔐 Login")
+
+    role = st.selectbox("Select User Type", ["planning", "operations"])
+    password = st.text_input("Enter Password", type="password")
+
+    if st.button("Login"):
+
+        if password == USERS[role]:
+            st.session_state.logged_in = True
+            st.session_state.role = role
+            st.rerun()
+        else:
+            st.error("Invalid Password")
+
+
+# -----------------------------------
+# SHOW LOGIN IF NOT LOGGED IN
+# -----------------------------------
+if not st.session_state.logged_in:
+    login()
+    st.stop()
+
+
+# -----------------------------------
+# MAIN APP STARTS HERE
 # -----------------------------------
 st.set_page_config(
     page_title="Pending Order ERP",
@@ -21,12 +72,17 @@ st.markdown("<h2 style='text-align: center;'>Pending Order ERP System</h2>", uns
 st.markdown("---")
 
 # -----------------------------------
-# Sidebar Refresh
+# Sidebar
 # -----------------------------------
 st.sidebar.title("Options")
+st.sidebar.success(f"Logged in as: {st.session_state.role}")
 
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
+    st.rerun()
+
+if st.sidebar.button("🚪 Logout"):
+    st.session_state.clear()
     st.rerun()
 
 # -----------------------------------
@@ -92,6 +148,7 @@ def show_snapshot(final_df):
         st.markdown("**CutWt**")
         st.write(row.get("CutWt", "-"))
 
+
 # -----------------------------------
 # Search Type Selection
 # -----------------------------------
@@ -101,7 +158,7 @@ search_type = st.radio(
 )
 
 # ============================================================
-# 🔵 SEARCH BY PARTY NAME
+# SEARCH BY PARTY NAME
 # ============================================================
 if search_type == "Party Name":
 
@@ -131,7 +188,7 @@ if search_type == "Party Name":
         show_snapshot(final_df)
 
 # ============================================================
-# 🔴 SEARCH BY DOCUMENT NUMBER
+# SEARCH BY DOCUMENT NUMBER
 # ============================================================
 elif search_type == "Document Number":
 
@@ -151,4 +208,3 @@ elif search_type == "Document Number":
         final_df = doc_df[doc_df["SLNo"] == selected_slno]
 
         show_snapshot(final_df)
-
