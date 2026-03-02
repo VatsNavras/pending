@@ -103,7 +103,9 @@ def show_snapshot(final_df):
 
     st.markdown("---")
 
-    # STATUS + TIMESTAMP
+    # -----------------------------------
+    # CURRENT STATUS DISPLAY (FIXED)
+    # -----------------------------------
     current_status, updated_by, timestamp = get_status(
         row["Document Number"],
         row["SLNo"]
@@ -130,6 +132,8 @@ def show_snapshot(final_df):
         for index, r in doc_df.iterrows():
 
             slno = str(r["SLNo"])
+
+            # FIXED (3 return values handled)
             status_now, _, _ = get_status(document_number, slno)
 
             if select_all:
@@ -178,7 +182,7 @@ def show_snapshot(final_df):
 
 
 # -----------------------------------
-# SEARCH SECTION (UNCHANGED)
+# SEARCH SECTION
 # -----------------------------------
 search_type = st.radio("Search By", ["Party Name", "Document Number"])
 
