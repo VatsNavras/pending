@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from sheets import load_sheet, update_status_in_sheet, get_status
 
+
 # -----------------------------------
 # USER DATABASE
 # -----------------------------------
@@ -11,6 +12,7 @@ USERS = {
 }
 
 st.set_page_config(page_title="Pending Order ERP", layout="centered")
+
 
 # -----------------------------------
 # SESSION INIT
@@ -23,6 +25,7 @@ if "username" not in st.session_state:
 
 if "role" not in st.session_state:
     st.session_state.role = ""
+
 
 # -----------------------------------
 # LOGIN
@@ -47,6 +50,7 @@ if not st.session_state.logged_in:
     login()
     st.stop()
 
+
 # -----------------------------------
 # HEADER
 # -----------------------------------
@@ -64,6 +68,7 @@ if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
     st.rerun()
 
+
 # -----------------------------------
 # LOAD DATA
 # -----------------------------------
@@ -75,10 +80,13 @@ if df.empty:
 
 df.columns = df.columns.str.strip()
 
+
 # -----------------------------------
 # SEARCH SECTION
 # -----------------------------------
 search_type = st.radio("Search By", ["Party Name", "Document Number"])
+
+final_df = pd.DataFrame()
 
 if search_type == "Party Name":
     party_list = sorted(df["Party Name"].dropna().unique())
@@ -108,6 +116,7 @@ else:
         selected_slno = st.selectbox("Select SLNo", slno_list)
 
         final_df = doc_df[doc_df["SLNo"] == selected_slno]
+
 
 # -----------------------------------
 # SNAPSHOT
