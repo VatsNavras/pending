@@ -22,7 +22,7 @@ def get_worksheet():
     )
 
     client = gspread.authorize(credentials)
-    sheet = client.open(pending_development).sheet1
+    sheet = client.open("pending_development").sheet1
     return sheet
 
 
