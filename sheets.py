@@ -1,13 +1,16 @@
 import streamlit as st
 import gspread
+import pandas as pd
 from google.oauth2.service_account import Credentials
 
 
+# ===== CONFIG =====
 SPREADSHEET_NAME = "pending_development"
 DATA_SHEET = "Sheet1"
 STATUS_SHEET = "Sheet2"
 
 
+# ===== CONNECTION =====
 def connect_to_spreadsheet():
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -25,14 +28,19 @@ def connect_to_spreadsheet():
     return spreadsheet
 
 
-# ✅ Load main data (Sheet1)
+# ===== LOAD MAIN DATA (Sheet1) =====
 def load_sheet():
     spreadsheet = connect_to_spreadsheet()
     sheet = spreadsheet.worksheet(DATA_SHEET)
-    return sheet.get_all_records()
+
+    data = sheet.get_all_records()
+
+    df = pd.DataFrame(data)
+
+    return df
 
 
-# ✅ Update status in Sheet2
+# ===== UPDATE STATUS (Sheet2) =====
 def update_status_in_sheet(row_number, col_name, value):
     spreadsheet = connect_to_spreadsheet()
     sheet = spreadsheet.worksheet(STATUS_SHEET)
@@ -42,7 +50,7 @@ def update_status_in_sheet(row_number, col_name, value):
     # Add column if not exists
     if col_name not in headers:
         headers.append(col_name)
-        sheet.update('1:1', [headers])
+        sheet.update('1:1', [headers])  # safer batch update
 
     headers = sheet.row_values(1)
     col_index = headers.index(col_name) + 1
@@ -50,7 +58,7 @@ def update_status_in_sheet(row_number, col_name, value):
     sheet.update_cell(row_number, col_index, value)
 
 
-# ✅ Get status from Sheet2
+# ===== GET STATUS (Sheet2) =====
 def get_status(row_number, col_name):
     spreadsheet = connect_to_spreadsheet()
     sheet = spreadsheet.worksheet(STATUS_SHEET)
