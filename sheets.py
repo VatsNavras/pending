@@ -2,12 +2,15 @@ import gspread
 from google.oauth2.service_account import Credentials
 import streamlit as st
 import pandas as pd
+from datetime import datetime
+
+SHEET_NAME = "Pending Orders"  # 👈 Put your exact Google Sheet name here
 
 
-# ----------------------------
-# CONNECT TO GOOGLE SHEET
-# ----------------------------
-def get_worksheet(sheet_name):
+# -----------------------------------
+# CONNECT TO GOOGLE SHEETS
+# -----------------------------------
+def get_worksheet():
     creds_dict = dict(st.secrets["gcp_service_account"])
 
     credentials = Credentials.from_service_account_info(
@@ -19,32 +22,65 @@ def get_worksheet(sheet_name):
     )
 
     client = gspread.authorize(credentials)
-    spreadsheet = client.open(sheet_name)
-    worksheet = spreadsheet.sheet1
-
-    return worksheet
+    sheet = client.open(SHEET_NAME).sheet1
+    return sheet
 
 
-# ----------------------------
-# LOAD SHEET (Old Name Supported)
-# ----------------------------
-def load_sheet(sheet_name):
-    worksheet = get_worksheet(sheet_name)
-    data = worksheet.get_all_records()
+# -----------------------------------
+# LOAD FULL SHEET
+# -----------------------------------
+@st.cache_data(ttl=60)
+def load_sheet():
+    sheet = get_worksheet()
+    data = sheet.get_all_records()
     return pd.DataFrame(data)
 
 
-# ----------------------------
-# GET STATUS (Optional Helper)
-# ----------------------------
-def get_status(sheet_name):
-    worksheet = get_worksheet(sheet_name)
-    return worksheet.get_all_records()
+# -----------------------------------
+# GET STATUS
+# -----------------------------------
+def get_status(document, slno):
+    sheet = get_worksheet()
+    records = sheet.get_all_records()
+
+    for row in records:
+        if str(row.get("Document Number")) == str(document) and str(row.get("SLNo")) == str(slno):
+            return (
+                row.get("Status", "No Planned"),
+                row.get("Updated By", "-"),
+                row.get("Timestamp", "-"),
+            )
+
+    return "No Planned", "-", "-"
 
 
-# ----------------------------
-# UPDATE STATUS SAFELY
-# ----------------------------
-def update_status_in_sheet(sheet_name, row_number, status_column_number, new_status):
-    worksheet = get_worksheet(sheet_name)
-    worksheet.update_cell(row_number, status_column_number, new_status)
+# -----------------------------------
+# UPDATE STATUS
+# -----------------------------------
+def update_status_in_sheet(document, slno, status, updated_by):
+    sheet = get_worksheet()
+    records = sheet.get_all_records()
+
+    for index, row in enumerate(records):
+        if str(row.get("Document Number")) == str(document) and str(row.get("SLNo")) == str(slno):
+
+            # +2 because:
+            # Row 1 = header
+            # enumerate starts at 0
+            excel_row = index + 2
+
+            headers = sheet.row_values(1)
+
+            status_col = headers.index("Status") + 1
+            updated_by_col = headers.index("Updated By") + 1
+            timestamp_col = headers.index("Timestamp") + 1
+
+            sheet.update_cell(excel_row, status_col, status)
+            sheet.update_cell(excel_row, updated_by_col, updated_by)
+            sheet.update_cell(
+                excel_row,
+                timestamp_col,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            )
+
+            break
