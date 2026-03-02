@@ -103,22 +103,24 @@ def show_snapshot(final_df):
 
     st.markdown("---")
 
-    # -----------------------------
-    # CURRENT STATUS DISPLAY
-    # -----------------------------
-    current_status = get_status(row["Document Number"], row["SLNo"])
-    st.write("### Current Status:", current_status)
+    # STATUS + TIMESTAMP
+    current_status, updated_by, timestamp = get_status(
+        row["Document Number"],
+        row["SLNo"]
+    )
 
-    # -----------------------------
+    st.write("### Current Status:", current_status)
+    st.write("Last Updated By:", updated_by)
+    st.write("Last Updated On:", timestamp)
+
+    # -----------------------------------
     # PLANNING UPDATE SECTION
-    # -----------------------------
+    # -----------------------------------
     if st.session_state.role == "planning":
 
         st.markdown("### ✏ Update Status")
 
         document_number = str(row["Document Number"])
-
-        # Get all SLNos for this document
         doc_df = df[df["Document Number"] == row["Document Number"]]
 
         select_all = st.checkbox("✅ Select All SLNo")
@@ -128,7 +130,7 @@ def show_snapshot(final_df):
         for index, r in doc_df.iterrows():
 
             slno = str(r["SLNo"])
-            status_now = get_status(document_number, slno)
+            status_now, _, _ = get_status(document_number, slno)
 
             if select_all:
                 selected = True
@@ -143,7 +145,17 @@ def show_snapshot(final_df):
 
         new_status = st.selectbox(
             "Select New Status",
-            ["Pending", "In Production", "Completed", "Dispatched"]
+            [
+                "No Planned",
+                "Under RM Procurement",
+                "Under Forging",
+                "Under Machining",
+                "Under TPM",
+                "Under HT",
+                "Under NDT/DT",
+                "Under Final Inspection",
+                "Dispatched"
+            ]
         )
 
         if st.button("🚀 Update Selected"):
@@ -166,7 +178,7 @@ def show_snapshot(final_df):
 
 
 # -----------------------------------
-# SEARCH (Same As Before)
+# SEARCH SECTION (UNCHANGED)
 # -----------------------------------
 search_type = st.radio("Search By", ["Party Name", "Document Number"])
 
@@ -208,7 +220,4 @@ else:
         final_df = doc_df[doc_df["SLNo"] == selected_slno]
 
         show_snapshot(final_df)
-
-
-
 
