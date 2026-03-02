@@ -10,13 +10,11 @@ from datetime import datetime
 @st.cache_resource
 def connect():
     """
-    Connect to Google Sheet using Streamlit secrets.
-    Uses gspread native authentication (Cloud-safe).
+    Stable Google Sheets connection for Streamlit Cloud
     """
     client = gspread.service_account_from_dict(
         st.secrets["gcp_service_account"]
     )
-
     return client.open_by_key(st.secrets["SPREADSHEET_ID"])
 
 
@@ -25,9 +23,6 @@ def connect():
 # ===================================
 @st.cache_data(ttl=60)
 def load_sheet():
-    """
-    Load main data from Sheet1.
-    """
     spreadsheet = connect()
     worksheet = spreadsheet.worksheet("Sheet1")
 
@@ -44,13 +39,7 @@ def load_sheet():
 # ===================================
 @st.cache_data(ttl=60)
 def load_status_sheet():
-    """
-    Load or create Sheet2 for status tracking.
-    Returns:
-        worksheet object,
-        list of records,
-        dictionary for quick lookup
-    """
+
     spreadsheet = connect()
 
     try:
@@ -67,14 +56,17 @@ def load_status_sheet():
 
     records = worksheet.get_all_records()
 
-    status_dict = {
-        (str(row.get("Document Number")), str(row.get("SLNo"))): {
+    status_dict = {}
+
+    for row in records:
+        doc = str(row.get("Document Number"))
+        sl = str(row.get("SLNo"))
+
+        status_dict[(doc, sl)] = {
             "status": row.get("Status", "Pending"),
             "updated_by": row.get("Updated By", ""),
             "timestamp": row.get("Last Updated On", "")
         }
-        for row in records
-    }
 
     return worksheet, records, status_dict
 
@@ -83,9 +75,7 @@ def load_status_sheet():
 # GET CURRENT STATUS
 # ===================================
 def get_status(document_number, slno):
-    """
-    Fetch current status for given Document + SLNo.
-    """
+
     _, _, status_dict = load_status_sheet()
 
     data = status_dict.get(
@@ -102,28 +92,27 @@ def get_status(document_number, slno):
 # UPDATE STATUS WITH TIMESTAMP
 # ===================================
 def update_status_in_sheet(document, slno, status, updated_by):
-    """
-    Update existing row if found,
-    else append new row.
-    """
+
     worksheet, records, _ = load_status_sheet()
 
     timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
-    # Check if entry exists
-    for i, row in enumerate(records, start=2):  # Start at row 2 (header row is 1)
+    # Search existing entry
+    for index, row in enumerate(records, start=2):  # row 1 is header
         if (
             str(row.get("Document Number")) == str(document)
             and str(row.get("SLNo")) == str(slno)
         ):
+
             worksheet.update(
-                f"C{i}:E{i}",
-                [[status, updated_by, timestamp]]
+                range_name=f"C{index}:E{index}",
+                values=[[status, updated_by, timestamp]]
             )
+
             load_status_sheet.clear()
             return
 
-    # If not found → append new row
+    # If not found → append new
     worksheet.append_row(
         [document, slno, status, updated_by, timestamp]
     )
