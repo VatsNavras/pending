@@ -22,7 +22,7 @@ def connect():
 
     client = gspread.authorize(creds)
 
-    return client.open_by_key(st.secrets["SPREADSHEET_ID"])
+    return client.open_by_key(st.secrets["1xCFURsxL3xv6zeN9ElYMPaE_A5sBOZewOZAH1cWdT0A"])
 
 
 # ===================================
