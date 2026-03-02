@@ -1,122 +1,45 @@
-import streamlit as st
 import gspread
+from google.oauth2.service_account import Credentials
+import streamlit as st
 import pandas as pd
-from datetime import datetime
 
 
-# ===================================
+# ----------------------------
 # CONNECT TO GOOGLE SHEET
-# ===================================
-@st.cache_resource
-def connect():
-    """
-    Stable Google Sheets connection for Streamlit Cloud
-    """
-    client = gspread.service_account_from_dict(
-        st.secrets["gcp_service_account"]
+# ----------------------------
+def get_worksheet(sheet_name):
+    creds_dict = dict(st.secrets["gcp_service_account"])
+
+    credentials = Credentials.from_service_account_info(
+        creds_dict,
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ],
     )
-    return client.open_by_key(st.secrets["SPREADSHEET_ID"])
+
+    client = gspread.authorize(credentials)
+
+    spreadsheet = client.open(sheet_name)
+    worksheet = spreadsheet.sheet1
+
+    return worksheet
 
 
-# ===================================
-# LOAD MAIN ERP DATA (Sheet1)
-# ===================================
-@st.cache_data(ttl=60)
-def load_sheet():
-    spreadsheet = connect()
-    worksheet = spreadsheet.worksheet("Sheet1")
-
+# ----------------------------
+# READ DATA
+# ----------------------------
+def read_sheet(sheet_name):
+    worksheet = get_worksheet(sheet_name)
     data = worksheet.get_all_records()
-
-    if not data:
-        return pd.DataFrame()
-
     return pd.DataFrame(data)
 
 
-# ===================================
-# LOAD STATUS SHEET (Sheet2)
-# ===================================
-@st.cache_data(ttl=60)
-def load_status_sheet():
+# ----------------------------
+# UPDATE STATUS (SAFE METHOD)
+# ----------------------------
+def update_status_in_sheet(sheet_name, row_number, status_column_number, new_status):
+    worksheet = get_worksheet(sheet_name)
 
-    spreadsheet = connect()
-
-    try:
-        worksheet = spreadsheet.worksheet("Sheet2")
-    except gspread.exceptions.WorksheetNotFound:
-        worksheet = spreadsheet.add_worksheet(
-            title="Sheet2",
-            rows="2000",
-            cols="10"
-        )
-        worksheet.append_row(
-            ["Document Number", "SLNo", "Status", "Updated By", "Last Updated On"]
-        )
-
-    records = worksheet.get_all_records()
-
-    status_dict = {}
-
-    for row in records:
-        doc = str(row.get("Document Number"))
-        sl = str(row.get("SLNo"))
-
-        status_dict[(doc, sl)] = {
-            "status": row.get("Status", "Pending"),
-            "updated_by": row.get("Updated By", ""),
-            "timestamp": row.get("Last Updated On", "")
-        }
-
-    return worksheet, records, status_dict
-
-
-# ===================================
-# GET CURRENT STATUS
-# ===================================
-def get_status(document_number, slno):
-
-    _, _, status_dict = load_status_sheet()
-
-    data = status_dict.get(
-        (str(document_number), str(slno))
-    )
-
-    if data:
-        return data["status"], data["updated_by"], data["timestamp"]
-
-    return "No Planned", "-", "-"
-
-
-# ===================================
-# UPDATE STATUS WITH TIMESTAMP
-# ===================================
-def update_status_in_sheet(document, slno, status, updated_by):
-
-    worksheet, records, _ = load_status_sheet()
-
-    timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-
-    # Check if entry already exists
-    for index, row in enumerate(records, start=2):  # row 1 is header
-
-        if (
-            str(row.get("Document Number")) == str(document)
-            and str(row.get("SLNo")) == str(slno)
-        ):
-
-            # IMPORTANT: positional arguments for gspread 5.7.2
-            worksheet.update(
-                f"C{index}:E{index}",
-                [[status, updated_by, timestamp]]
-            )
-
-            load_status_sheet.clear()
-            return
-
-    # If not found → append new row
-    worksheet.append_row(
-        [document, slno, status, updated_by, timestamp]
-    )
-
-    load_status_sheet.clear()
+    # gspread row/column starts from 1
+    worksheet.update_cell(row_number, status_column_number, new_status)
