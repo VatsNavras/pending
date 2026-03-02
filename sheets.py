@@ -2,9 +2,10 @@ import streamlit as st
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
+from datetime import datetime
 
 # ===================================
-# CONNECT TO GOOGLE SHEET (ONCE)
+# CONNECT TO GOOGLE SHEET
 # ===================================
 @st.cache_resource
 def connect():
@@ -54,18 +55,21 @@ def load_status_sheet():
     except:
         worksheet = spreadsheet.add_worksheet(
             title="Sheet2",
-            rows="1000",
+            rows="2000",
             cols="10"
         )
         worksheet.append_row(
-            ["Document Number", "SLNo", "Status", "Updated By"]
+            ["Document Number", "SLNo", "Status", "Updated By", "Last Updated On"]
         )
 
     records = worksheet.get_all_records()
 
-    # Convert to dictionary for O(1) lookup
     status_dict = {
-        (str(row["Document Number"]), str(row["SLNo"])): row["Status"]
+        (str(row["Document Number"]), str(row["SLNo"])): {
+            "status": row.get("Status", "Pending"),
+            "updated_by": row.get("Updated By", ""),
+            "timestamp": row.get("Last Updated On", "")
+        }
         for row in records
     }
 
@@ -73,37 +77,46 @@ def load_status_sheet():
 
 
 # ===================================
-# GET CURRENT STATUS (FAST LOOKUP)
+# GET CURRENT STATUS + TIMESTAMP
 # ===================================
 def get_status(document_number, slno):
 
     _, _, status_dict = load_status_sheet()
 
-    return status_dict.get(
+    data = status_dict.get(
         (str(document_number), str(slno)),
-        "Pending"
+        None
     )
+
+    if data:
+        return data["status"], data["updated_by"], data["timestamp"]
+
+    return "No Planned", "-", "-"
 
 
 # ===================================
-# UPDATE STATUS
+# UPDATE STATUS WITH TIMESTAMP
 # ===================================
 def update_status_in_sheet(document, slno, status, updated_by):
 
     worksheet, records, _ = load_status_sheet()
 
-    # Check if exists → update
+    timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+
     for i, row in enumerate(records, start=2):
         if (
             str(row.get("Document Number")) == str(document)
             and str(row.get("SLNo")) == str(slno)
         ):
-            worksheet.update(f"C{i}:D{i}", [[status, updated_by]])
+            worksheet.update(
+                f"C{i}:E{i}",
+                [[status, updated_by, timestamp]]
+            )
             load_status_sheet.clear()
             return
 
-    # If not found → append
-    worksheet.append_row([document, slno, status, updated_by])
+    worksheet.append_row(
+        [document, slno, status, updated_by, timestamp]
+    )
 
     load_status_sheet.clear()
-
