@@ -82,13 +82,13 @@ df.columns = df.columns.str.strip()
 
 
 # -----------------------------------
-# SEARCH SECTION
+# SEARCH
 # -----------------------------------
 search_type = st.radio("Search By", ["Party Name", "Document Number"])
-
 final_df = pd.DataFrame()
 
 if search_type == "Party Name":
+
     party_list = sorted(df["Party Name"].dropna().unique())
     selected_party = st.selectbox("Select Party Name", party_list)
 
@@ -106,6 +106,7 @@ if search_type == "Party Name":
         final_df = doc_df[doc_df["SLNo"] == selected_slno]
 
 else:
+
     doc_list = sorted(df["Document Number"].unique())
     selected_doc = st.selectbox("Select Document Number", doc_list)
 
