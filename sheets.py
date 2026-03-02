@@ -19,7 +19,6 @@ def get_worksheet(sheet_name):
     )
 
     client = gspread.authorize(credentials)
-
     spreadsheet = client.open(sheet_name)
     worksheet = spreadsheet.sheet1
 
@@ -27,19 +26,25 @@ def get_worksheet(sheet_name):
 
 
 # ----------------------------
-# READ DATA
+# LOAD SHEET (Old Name Supported)
 # ----------------------------
-def read_sheet(sheet_name):
+def load_sheet(sheet_name):
     worksheet = get_worksheet(sheet_name)
     data = worksheet.get_all_records()
     return pd.DataFrame(data)
 
 
 # ----------------------------
-# UPDATE STATUS (SAFE METHOD)
+# GET STATUS (Optional Helper)
+# ----------------------------
+def get_status(sheet_name):
+    worksheet = get_worksheet(sheet_name)
+    return worksheet.get_all_records()
+
+
+# ----------------------------
+# UPDATE STATUS SAFELY
 # ----------------------------
 def update_status_in_sheet(sheet_name, row_number, status_column_number, new_status):
     worksheet = get_worksheet(sheet_name)
-
-    # gspread row/column starts from 1
     worksheet.update_cell(row_number, status_column_number, new_status)
