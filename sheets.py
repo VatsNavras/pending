@@ -7,7 +7,7 @@ from datetime import datetime
 # -----------------------------------
 # CONFIG
 # -----------------------------------
-SPREADSHEET_ID = "PASTE_YOUR_SPREADSHEET_ID_HERE"
+SPREADSHEET_ID = "1xCFURsxL3xv6zeN9ElYMPaE_A5sBOZewOZAH1cWdT0A"
 
 
 # -----------------------------------
