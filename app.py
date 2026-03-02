@@ -24,7 +24,6 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = ""
 
-
 # -----------------------------------
 # LOGIN
 # -----------------------------------
@@ -77,7 +76,7 @@ if df.empty:
 df.columns = df.columns.str.strip()
 
 # -----------------------------------
-# SEARCH
+# SEARCH SECTION
 # -----------------------------------
 search_type = st.radio("Search By", ["Party Name", "Document Number"])
 
@@ -131,9 +130,6 @@ if not final_df.empty:
     st.write("Updated By:", updated_by)
     st.write("Updated On:", timestamp)
 
-    # -----------------------------------
-    # PLANNING ROLE UPDATE
-    # -----------------------------------
     if st.session_state.role == "planning":
 
         new_status = st.selectbox(
