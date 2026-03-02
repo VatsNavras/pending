@@ -97,22 +97,24 @@ def update_status_in_sheet(document, slno, status, updated_by):
 
     timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
-    # Search existing entry
+    # Check if entry already exists
     for index, row in enumerate(records, start=2):  # row 1 is header
+
         if (
             str(row.get("Document Number")) == str(document)
             and str(row.get("SLNo")) == str(slno)
         ):
 
+            # IMPORTANT: positional arguments for gspread 5.7.2
             worksheet.update(
-                range_name=f"C{index}:E{index}",
-                values=[[status, updated_by, timestamp]]
+                f"C{index}:E{index}",
+                [[status, updated_by, timestamp]]
             )
 
             load_status_sheet.clear()
             return
 
-    # If not found → append new
+    # If not found → append new row
     worksheet.append_row(
         [document, slno, status, updated_by, timestamp]
     )
